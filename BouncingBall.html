@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Bắn Gạch</title>
+    <style>
+        Canvas {
+            border: 1px solid red;
+        }
+    </style>
+</head>
+<body>
+<canvas id="myCanvas" width="800" height="600"></canvas><br>
+<button onclick="starGame()">STAR GAME</button>
+<button onclick="replayGame()">REPLAY GAME</button>
+<button onclick="nextLevel()">NEXT LEVEL</button>
+<script>
+    let canvas = document.getElementById("myCanvas");
+    let context = canvas.getContext("2d");
+
+    let ball = {
+        x: Math.floor(Math.random() * (canvas.width - 20)) + 20,
+        y: 200,
+        dx: 5,
+        dy: 5,
+        radius: 10
+    };
+    let bars = {
+        width: 100,
+        height: 10,
+        x: 0,
+        y: canvas.height - 10,
+        speed: 15,
+        isMoveLeft: false,
+        isMoveRight: false,
+    };
+    let bricksConfig = {
+        offSetX : 26,
+        offSetY : 26,
+        margin : 26,
+        width : 70,
+        height : 15,
+        totalRow : 3,
+        totalColumn : 8
+    };
+
+    let BricksList = [];
+    for(let i=0; i<bricksConfig.totalRow; i++){
+        for(let j=0; j<bricksConfig.totalColumn; j++){
+            BricksList.push({
+                x : bricksConfig.offSetX + j*(bricksConfig.width+bricksConfig.margin),
+                y : bricksConfig.offSetY + i*(bricksConfig.height+bricksConfig.margin),
+                isBroken : false
+            })
+        }
+    }
+
+    let isGameOver = false;
+    let isGameWin = false;
+    let isMaxScore = 1000;
+    let userScore = 0;
+    let level = 1;
+
+    document.addEventListener('keyup', function (event) {
+        if (event.keyCode === 37) {
+            bars.isMoveLeft = false;
+        } else if (event.keyCode === 39) {
+            bars.isMoveRight = false;
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode === 37) {
+            bars.isMoveLeft = true;
+        } else if (event.keyCode === 39) {
+            bars.isMoveRight = true;
+        }
+    });
+
+    function drawBall() {
+        context.beginPath();
+        context.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+        context.fillStyle = 'red';
+        context.fill();
+        context.closePath();
+    }
+    function drawBars() {
+        context.beginPath();
+        context.rect(bars.x, bars.y, bars.width, bars.height);
+        context.fillStyle = 'blue';
+        context.fill();
+        context.closePath();
+    }
+    function drawBricks() {
+        BricksList.forEach(function(bricks){
+            if(!bricks.isBroken){
+                context.beginPath();
+                context.rect(bricks.x, bricks.y, bricksConfig.width, bricksConfig.height);
+                context.fill();
+                context.closePath();
+            }
+        });
+    }
+    function drawScoreLevel() {
+        context.beginPath();
+        context.font = '10pt Calibri';
+        context.fillStyle = 'black';
+        context.fillText('Score : '+userScore,10,15 );
+        context.closePath();
+        context.beginPath();
+        context.font = '10pt Calibri';
+        context.fillStyle = 'black';
+        context.fillText('Level : '+level,80,15 );
+        context.closePath();
+    }
+
+    function handleBallCollisionWall() {
+        if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) {
+            ball.dx = -ball.dx;
+        }
+        if (ball.y < ball.radius || ball.y > canvas.height - ball.radius) {
+            ball.dy = -ball.dy;
+
+        }
+    }
+    function handleBallCollisionBars(){
+        if(ball.y + ball.radius>= canvas.height - bars.height && ball.x>= bars.x-ball.radius
+        && ball.x<= bars.x+bars.width+ball.radius){
+            ball.dy = -ball.dy;
+        }
+    }
+    function handleBallCollisionBricks() {
+        BricksList.forEach(function (bricks){
+            if(!bricks.isBroken){
+                if(ball.x>=bricks.x-ball.radius && ball.x<=bricks.x+bricksConfig.width+ball.radius
+                && ball.y+ball.radius>=bricks.y && ball.y - ball.radius<=bricks.y+bricksConfig.height){
+                    ball.dy = -ball.dy;
+                    bricks.isBroken = true;
+                    userScore++;
+                    if(userScore>=isMaxScore){
+                        isGameOver = true;
+                        isGameWin = true;
+                    }
+                }
+            }
+        })
+    }
+    
+    function updateBarsPosition() {
+        if (bars.isMoveLeft) {
+            bars.x -= bars.speed;
+        } else if (bars.isMoveRight) {
+            bars.x += bars.speed;
+        }
+        if (bars.x < 0) {
+            bars.x = 0;
+        } else if (bars.x > canvas.width - bars.width) {
+            bars.x = canvas.width - bars.width;
+        }
+    }
+    function updateBallPosition() {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+    }
+
+    function checkGameOver(){
+        if(ball.y>canvas.height -ball.radius){
+            isGameOver = true;
+        }
+    }
+    function checkLevel(){
+        if(userScore === BricksList.length*level){
+            nextLevel();
+        }
+    }
+    function handledGameOver(){
+        if(isGameWin){
+            context.beginPath();
+            context.font = '50pt Calibri';
+            context.fillStyle = 'black';
+            context.fillText('YOU WIN!',230,300);
+            context.closePath();
+        } else {
+            context.beginPath();
+            context.font = '50pt Calibri';
+            context.fillStyle = 'black';
+            context.fillText('Game Over!',230,300);
+            context.closePath();
+        }
+
+    }
+
+    function starGame() {
+        if(!isGameOver) {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            drawBall();
+            drawBars();
+            drawBricks();
+            drawScoreLevel();
+            handleBallCollisionWall();
+            handleBallCollisionBars();
+            handleBallCollisionBricks();
+            updateBallPosition();
+            updateBarsPosition();
+            checkGameOver();
+            checkLevel();
+            requestAnimationFrame(starGame);
+        } else {
+            handledGameOver();
+        }
+    }
+    function replayGame() {
+        if(isGameOver){
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            ball = {
+                x: Math.floor(Math.random() * (canvas.width - 20)) + 20,
+                y: 200,
+                dx: 2,
+                dy: 2,
+                radius: 10
+            };
+            bars = {
+                width: 100,
+                height: 10,
+                x: 0,
+                y: canvas.height - 10,
+                speed: 20,
+                isMoveLeft: false,
+                isMoveRight: false,
+            };
+            BricksList = [];
+            for(let i=0; i<bricksConfig.totalRow; i++){
+                for(let j=0; j<bricksConfig.totalColumn; j++){
+                    BricksList.push({
+                        x : bricksConfig.offSetX + j*(bricksConfig.width+bricksConfig.margin),
+                        y : bricksConfig.offSetY + i*(bricksConfig.height+bricksConfig.margin),
+                        isBroken : false
+                    })
+                }
+            }
+            userScore = 0;
+            isGameOver = false;
+            isGameWin = false;
+            starGame();
+        }
+
+    }
+    function nextLevel() {
+        level++;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        ball.x = Math.floor(Math.random() * (canvas.width - 20)) + 20;
+        ball.y = 200;
+        ball.dx++;
+        ball.dy++;
+        BricksList = [];
+        for(let i=0; i<bricksConfig.totalRow; i++){
+            for(let j=0; j<bricksConfig.totalColumn; j++){
+                BricksList.push({
+                    x : bricksConfig.offSetX + j*(bricksConfig.width+bricksConfig.margin),
+                    y : bricksConfig.offSetY + i*(bricksConfig.height+bricksConfig.margin),
+                    isBroken : false
+                })
+            }
+        }
+    }
+</script>
+</body>
+</html>
